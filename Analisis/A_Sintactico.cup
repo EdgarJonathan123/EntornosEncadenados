@@ -1,0 +1,156 @@
+/*----------------------1ra Area: Codigo de Usuario ---------------------------------------------*/
+//------------->Importaciones, paquetes
+
+package Analisis;
+
+import Logica.Nodo;
+
+import java_cup.runtime.Symbol;
+import java.util.LinkedList;
+
+//-------------->Codigo para el parser, varibles, metodos
+
+parser code
+{:  
+
+    public Nodo raiz;
+
+    public TablaError tablaES = TablaError.getInstance();
+    //Metodo al que se llama automaticamente ante algun error sintactico
+    public void syntax_error(Symbol s)
+    {
+        String lexema = s.value.toString();
+        int fila=s.left;
+        int col = s.right;
+
+        System.out.println("!!!!!!Error sintactico recuperado!!!!!!!!");
+        System.out.println("\t\tLexema: "+lexema);
+        System.out.println("\t\tFila: "+fila);
+        System.out.println("\t\tColumna: "+col);
+        
+        tablaES.setError(lexema,fila,col,"Error sintactico","El caracter no esperado");
+
+    }
+
+
+    //Metodo al que se llama en el momento  en que ya no  es posible una recuperacion de errores
+    public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception{ 
+        
+        String lexema = s.value.toString();
+        int fila = s.right;
+        int col = s.left;
+        
+        System.out.println("!!!!!!Error sintactico, panic mode!!!!!!!!");
+        System.out.println("\t\tLexema: "+lexema);
+        System.out.println("\t\tFila: "+fila);
+        System.out.println("\t\tColumna: "+col);
+
+        tablaES.setError(lexema,fila,col,"Error sintactico","El caracter no esperado");
+
+    }
+:}
+
+//------------>Codigo para las acciones gramaticales 
+action code{: :}
+
+/*----------------------2da Area: Area de Declaraciones ---------------------------------------------*/
+
+//------------------------------------> declaracion de terminales
+
+//simbolos
+terminal String ptoComa,igual,llaveA,llaveC,parA,parC;                    
+
+
+//palabras reservadas
+terminal String PSprint,PSint,PSdouble,PSstring;
+
+
+//Expresiones regular
+terminal String cadena,entero,decimal,identificador;
+
+
+
+//------------------------------>declaracion de no terminales
+//general
+non terminal INICIO;
+non terminal Nodo BLOQUE;
+non terminal Nodo LINSTRUCCIONES;
+non terminal Nodo INSTRUCCION;
+non terminal Nodo DECLARACION;
+non terminal Nodo IMPRIMIR;
+non terminal Nodo E;
+non terminal Nodo TIPO;
+
+start with INICIO;
+/*----------------------3ra Area: Reglas Semanticas ---------------------------------------------*/
+INICIO ::= BLOQUE:a
+        {:
+            Nodo padre = new Nodo("S");
+            padre.hijo(a);
+            parser.raiz = padre;
+        :}
+        ;
+
+
+BLOQUE ::= llaveA llaveC
+        {:
+            RESULT = new Nodo("BLOQUE");
+        :}
+        |  llaveA LINSTRUCCIONES:a llaveC
+        {:
+            Nodo padre = new Nodo("BLOQUE");
+            padre.hijo(a);
+            RESULT = padre;
+        :}
+        ;
+
+LINSTRUCCIONES ::= LINSTRUCCIONES:padre INSTRUCCION:a
+            {:
+                padre.hijo(a);
+                RESULT = padre;         
+            :}
+            |   INSTRUCCION:a
+            {:
+                Nodo padre = new Nodo("LINSTRUCCIONES");
+                padre.hijo(a);
+                RESULT = padre;
+            :}
+            ;
+
+INSTRUCCION ::= BLOQUE:a{:RESULT =a; :}
+            |   DECLARACION:a{:RESULT =a; :}
+            |   IMPRIMIR:a{:RESULT =a; :}
+            ;
+
+IMPRIMIR ::= PSprint parA E:a parC ptoComa
+            {:
+                Nodo padre = new Nodo("IMPRIMIR");
+                padre.hijo(a);
+                RESULT=padre;
+            :}
+            ;
+
+DECLARACION ::= TIPO:a identificador:b igual E:c ptoComa
+            {:
+                Nodo id = new Nodo("ID",b);
+                Nodo padre = new Nodo("DECLARACION", bleft,bright);
+                padre.hijo(a);
+                padre.hijo(id);
+                padre.hijo(c);
+                RESULT = padre;
+            :}
+            ;
+
+
+TIPO ::=PSint:a {: RESULT= new Nodo("int",a);:}
+    |   PSdouble:a {: RESULT= new Nodo("double",a);:}
+    |   PSstring:a {: RESULT= new Nodo("string",a);:}
+    ;
+
+E ::= entero:a{:RESULT= new Nodo("ENTERO",a,aleft,aright);:}
+    | decimal:a{:RESULT= new Nodo("DOBLE",a,aleft,aright);:}
+    | cadena:a{:RESULT= new Nodo("CADENA",a,aleft,aright);:}
+    | identificador:a{:RESULT= new Nodo("ID",a,aleft,aright);:}
+    ;
+
+
